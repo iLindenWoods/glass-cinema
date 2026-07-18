@@ -1,219 +1,52 @@
-const $ = (selector) => document.querySelector(selector);
-const $$ = (selector) => [...document.querySelectorAll(selector)];
-
-const catalogue = [
-  { id: 603, type: 'movie', title: 'The Matrix', year: 1999 },
-  { id: 157336, type: 'movie', title: 'Interstellar', year: 2014 },
-  { id: 329865, type: 'movie', title: 'Arrival', year: 2016 },
-  { id: 62, type: 'movie', title: '2001: A Space Odyssey', year: 1968 },
-  { id: 686, type: 'movie', title: 'Contact', year: 1997 },
-  { id: 27205, type: 'movie', title: 'Inception', year: 2010 },
-  { id: 1418, type: 'tv', title: 'The Big Bang Theory', year: 2007 },
-  { id: 23004, type: 'tv', title: 'Captain Future', year: 1978 },
-  { id: 70523, type: 'tv', title: 'Dark', year: 2017 },
-  { id: 63639, type: 'tv', title: 'The Expanse', year: 2015 },
-  { id: 95396, type: 'tv', title: 'Severance', year: 2022 },
-  { id: 93740, type: 'tv', title: 'Foundation', year: 2021 }
-];
-
-const defaults = { baseUrl: 'https://vidrock.ru', type: 'movie', recent: [] };
-const readState = () => {
-  try { return { ...defaults, ...JSON.parse(localStorage.getItem('glassCinemaV5') || '{}') }; }
-  catch { return { ...defaults }; }
-};
-const saveState = (patch) => localStorage.setItem('glassCinemaV5', JSON.stringify({ ...readState(), ...patch }));
-
-let mediaType = readState().type;
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => [...document.querySelectorAll(s)];
+const DB_NAME = 'glassCinemaCatalogueV6';
+const STORE = 'catalogues';
+const defaults = { baseUrl: 'https://vidrock.ru', type: 'movie', recent: [], preferTmdb: true };
+let state = readState();
+let mediaType = state.type;
 let selected = null;
+let catalogues = { movie: [], tv: [] };
+let currentRoute = '';
+let searchTimer = 0;
 
-function validHttpsUrl(value) {
-  try {
-    const url = new URL(value);
-    return url.protocol === 'https:' ? url : null;
-  } catch { return null; }
-}
+function readState(){try{return{...defaults,...JSON.parse(localStorage.getItem('glassCinemaV6')||'{}')}}catch{return{...defaults}}}
+function saveState(patch){state={...state,...patch};localStorage.setItem('glassCinemaV6',JSON.stringify(state))}
+function validHttps(value){try{const u=new URL(value);return u.protocol==='https:'?u:null}catch{return null}}
+function toast(message){const el=$('#toast');el.textContent=message;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,2800)}
+function setStatus(kind,text){const el=$('#catalogueStatus');el.className='status '+kind;el.querySelector('span').textContent=text}
+function normalizeId(v){const s=String(v??'').trim();return /^\d+$/.test(s)||/^tt\d+$/i.test(s)?s:null}
+function normalizeItem(raw,type){if(!raw||typeof raw!=='object')return null;const id=raw.id??raw.tmdb_id??raw.tmdbId??raw.tmdb??raw.imdb_id??raw.imdbId??raw.imdb;const title=raw.title??raw.name??raw.original_title??raw.original_name??raw.label;const cleanId=normalizeId(id);if(!cleanId||!title)return null;const year=raw.year??String(raw.release_date??raw.first_air_date??'').slice(0,4);return{id:cleanId,type,title:String(title),year:String(year||''),imdb:raw.imdb_id??raw.imdbId??raw.imdb??'',tmdb:raw.tmdb_id??raw.tmdbId??raw.tmdb??(/^\d+$/.test(cleanId)?cleanId:'')}}
+function extractItems(payload,type){let arr=[];if(Array.isArray(payload))arr=payload;else if(payload&&typeof payload==='object'){for(const key of ['results','items','data','movies','series','tv','shows'])if(Array.isArray(payload[key])){arr=payload[key];break}if(!arr.length)arr=Object.values(payload).filter(v=>v&&typeof v==='object')}
+ return arr.map(x=>normalizeItem(x,type)).filter(Boolean)}
+function openDb(){return new Promise((resolve,reject)=>{const req=indexedDB.open(DB_NAME,1);req.onupgradeneeded=()=>req.result.createObjectStore(STORE);req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)})}
+async function dbGet(key){try{const db=await openDb();return await new Promise((resolve,reject)=>{const tx=db.transaction(STORE,'readonly');const r=tx.objectStore(STORE).get(key);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}catch{return null}}
+async function dbSet(key,val){try{const db=await openDb();await new Promise((resolve,reject)=>{const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).put(val,key);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)})}catch{}}
+async function fetchCatalogue(type){const base=validHttps(state.baseUrl);if(!base)throw new Error('Invalid provider URL');const url=`${base.href.replace(/\/$/,'')}/list/${type==='movie'?'movie':'tv'}.json`;const res=await fetch(url,{cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer'});if(!res.ok)throw new Error(`HTTP ${res.status}`);return extractItems(await res.json(),type)}
+async function loadCatalogues(){setStatus('','Loading catalogue…');let loaded=0;for(const type of ['movie','tv']){try{const list=await fetchCatalogue(type);if(list.length){catalogues[type]=list;await dbSet(type,{saved:Date.now(),list});loaded+=list.length}}catch{const cached=await dbGet(type);if(cached?.list?.length){catalogues[type]=cached.list;loaded+=cached.list.length}}}
+ if(loaded)setStatus('ready',`${loaded.toLocaleString()} titles ready`);else setStatus('error','Catalogue unavailable — IDs still work');renderResults($('#titleSearch').value)}
+function setType(type){mediaType=type;saveState({type});$$('.segment').forEach(b=>b.classList.toggle('active',b.dataset.type===type));$('#episodeRow').hidden=type!=='tv';selected=null;renderSelection();renderResults($('#titleSearch').value)}
+function choose(item){if(item.type!==mediaType)setType(item.type);selected=item;$('#idInput').value=state.preferTmdb&&item.tmdb?item.tmdb:item.id;renderSelection();toast(`${item.title} selected`)}
+function renderSelection(){const card=$('#selectionCard');if(!selected){card.hidden=true;return}card.hidden=false;$('#selectedTitle').textContent=selected.title;$('#selectedMeta').textContent=[selected.year,selected.type==='tv'?'Series':'Movie',selected.id].filter(Boolean).join(' · ')}
+function renderResults(query=''){const root=$('#results');root.replaceChildren();const q=query.trim().toLocaleLowerCase();if(q.length<2)return;const tokens=q.split(/\s+/).filter(Boolean);const matches=catalogues[mediaType].filter(x=>{const hay=`${x.title} ${x.year} ${x.id}`.toLocaleLowerCase();return tokens.every(t=>hay.includes(t))}).slice(0,35);if(!matches.length){const d=document.createElement('div');d.className='result';d.textContent=catalogues[mediaType].length?'No matching title found.':'Catalogue could not be loaded; enter an ID manually.';root.append(d);return}for(const item of matches){const b=document.createElement('button');b.className='result';const left=document.createElement('span');left.textContent=item.title;const right=document.createElement('small');right.textContent=[item.year,item.id].filter(Boolean).join(' · ');b.append(left,right);b.onclick=()=>choose(item);root.append(b)}}
+function routeFor(id){const clean=normalizeId(id);const base=validHttps(state.baseUrl);if(!clean||!base)return null;const root=base.href.replace(/\/$/,'');if(mediaType==='movie')return `${root}/movie/${encodeURIComponent(clean)}`;const s=Math.max(1,parseInt($('#season').value)||1),e=Math.max(1,parseInt($('#episode').value)||1);return `${root}/tv/${encodeURIComponent(clean)}/${s}/${e}`}
+function addRecent(item){const recent=[{...item,season:mediaType==='tv'?Math.max(1,+$('#season').value||1):null,episode:mediaType==='tv'?Math.max(1,+$('#episode').value||1):null,playedAt:Date.now()},...state.recent.filter(x=>!(x.id===item.id&&x.type===item.type))].slice(0,12);saveState({recent});renderRecent()}
+function renderRecent(){const root=$('#recentList');root.replaceChildren();if(!state.recent.length){root.innerHTML='<p>No recent titles yet.</p>';return}for(const item of state.recent){const b=document.createElement('button');b.className='recent-chip';b.textContent=item.title||`${item.type==='tv'?'Series':'Movie'} ${item.id}`;b.onclick=()=>{setType(item.type);selected=item;$('#idInput').value=item.id;if(item.season)$('#season').value=item.season;if(item.episode)$('#episode').value=item.episode;renderSelection()};root.append(b)}}
+function play(){const id=normalizeId($('#idInput').value);if(!id){toast('Enter a valid TMDB number or IMDb tt-number.');$('#idInput').focus();return}const route=routeFor(id);if(!route){toast('Check the provider address in Settings.');return}currentRoute=route;const item=selected||{id,type:mediaType,title:`${mediaType==='tv'?'Series':'Movie'} ${id}`};addRecent(item);$('#emptyState').hidden=true;$('#embedPlayer').hidden=false;const frame=$('#playerFrame');frame.src='about:blank';requestAnimationFrame(()=>frame.src=route);toast('Loading inside Glass Cinema…')}
+function closePlayer(){const frame=$('#playerFrame');frame.src='about:blank';$('#embedPlayer').hidden=true;$('#emptyState').hidden=false;currentRoute=''}
+async function fullscreen(){const target=$('#embedPlayer');try{if(target.requestFullscreen)await target.requestFullscreen();else if(target.webkitRequestFullscreen)target.webkitRequestFullscreen();else toast('Tap the player’s own full-screen button.')}catch{toast('Tap the player’s own full-screen button.')}}
+function applyFilter(mode){const frame=$('#playerFrame');frame.classList.remove('filter-clear','filter-cinema');if(mode==='clear')frame.classList.add('filter-clear');if(mode==='cinema')frame.classList.add('filter-cinema');$$('.mode').forEach(b=>b.classList.toggle('active',b.dataset.filter===mode))}
 
-function showToast(message) {
-  const toast = $('#toast');
-  toast.textContent = message;
-  toast.hidden = false;
-  clearTimeout(showToast.timer);
-  showToast.timer = setTimeout(() => { toast.hidden = true; }, 2600);
-}
+$$('.segment').forEach(b=>b.onclick=()=>setType(b.dataset.type));
+$('#titleSearch').addEventListener('input',e=>{clearTimeout(searchTimer);searchTimer=setTimeout(()=>renderResults(e.target.value),80)});
+$('#idInput').addEventListener('input',()=>{selected=null;renderSelection()});
+$('#idInput').addEventListener('keydown',e=>{if(e.key==='Enter')play()});
+$('#playButton').onclick=play;$('#closePlayer').onclick=closePlayer;$('#fullscreenBtn').onclick=fullscreen;$('#openDirect').onclick=()=>{if(currentRoute)window.location.assign(currentRoute)};
+$('.modes').onclick=e=>{const b=e.target.closest('[data-filter]');if(b)applyFilter(b.dataset.filter)};
+$('#clearSelection').onclick=()=>{selected=null;$('#idInput').value='';renderSelection()};
+$('#clearRecent').onclick=()=>{saveState({recent:[]});renderRecent()};
+$('#settingsBtn').onclick=()=>{$('#baseUrl').value=state.baseUrl;$('#preferTmdb').checked=state.preferTmdb;$('#settingsDialog').showModal()};
+$('#saveSettings').onclick=e=>{const u=validHttps($('#baseUrl').value.trim());if(!u){e.preventDefault();toast('Enter a valid HTTPS provider address.');return}saveState({baseUrl:u.href.replace(/\/$/,''),preferTmdb:$('#preferTmdb').checked});loadCatalogues();toast('Settings saved')};
+$('#playerFrame').addEventListener('load',()=>{if($('#playerFrame').src!=='about:blank')toast('Player loaded. Use Open Directly only if playback is refused.')});
 
-function routeFor(id) {
-  const state = readState();
-  const base = validHttpsUrl(state.baseUrl);
-  if (!base || !/^\d+$/.test(String(id))) return null;
-  const clean = base.href.replace(/\/$/, '');
-  if (mediaType === 'movie') return `${clean}/movie/${encodeURIComponent(id)}`;
-  const season = Math.max(1, Number($('#season').value) || 1);
-  const episode = Math.max(1, Number($('#episode').value) || 1);
-  return `${clean}/tv/${encodeURIComponent(id)}/${season}/${episode}`;
-}
-
-function setType(type) {
-  mediaType = type;
-  saveState({ type });
-  $$('.segment').forEach((button) => button.classList.toggle('active', button.dataset.type === type));
-  $('#episodeRow').hidden = type !== 'tv';
-  selected = null;
-  $('#selectionPill').textContent = type === 'movie' ? 'Movie mode' : 'Series mode';
-  renderResults($('#titleSearch').value);
-}
-
-function choose(item) {
-  selected = item;
-  if (item.type !== mediaType) setType(item.type);
-  selected = item;
-  $('#idInput').value = String(item.id);
-  $('#selectionPill').textContent = `${item.title} · ${item.id}`;
-  showToast(`${item.title} selected`);
-}
-
-function renderResults(query = '') {
-  const root = $('#results');
-  root.replaceChildren();
-  const q = query.trim().toLowerCase();
-  if (!q) return;
-  const matches = catalogue.filter((item) => item.type === mediaType && (item.title.toLowerCase().includes(q) || String(item.id).includes(q))).slice(0, 7);
-  if (!matches.length) {
-    const note = document.createElement('div');
-    note.className = 'result';
-    note.textContent = 'Not in the local list — enter its TMDB number above.';
-    root.append(note);
-    return;
-  }
-  for (const item of matches) {
-    const button = document.createElement('button');
-    button.className = 'result';
-    button.innerHTML = `<span>${item.title}</span><small>${item.year} · ${item.id}</small>`;
-    button.addEventListener('click', () => choose(item));
-    root.append(button);
-  }
-}
-
-function addRecent(item) {
-  const state = readState();
-  const recent = [{ ...item, playedAt: Date.now() }, ...state.recent.filter((entry) => !(entry.id === item.id && entry.type === item.type))].slice(0, 8);
-  saveState({ recent });
-  renderRecent();
-}
-
-function renderRecent() {
-  const root = $('#recentList');
-  root.replaceChildren();
-  const recent = readState().recent || [];
-  if (!recent.length) {
-    const p = document.createElement('p');
-    p.textContent = 'No recent titles yet.';
-    root.append(p);
-    return;
-  }
-  for (const item of recent) {
-    const button = document.createElement('button');
-    button.className = 'recent-chip';
-    button.textContent = item.title || `${item.type === 'tv' ? 'Series' : 'Movie'} ${item.id}`;
-    button.addEventListener('click', () => choose(item));
-    root.append(button);
-  }
-}
-
-function playOriginal() {
-  const id = $('#idInput').value.trim();
-  if (!/^\d+$/.test(id)) {
-    showToast('Enter a numeric TMDB number first.');
-    $('#idInput').focus();
-    return;
-  }
-  const route = routeFor(id);
-  if (!route) {
-    showToast('The player address must be a valid HTTPS address.');
-    return;
-  }
-  const item = selected?.id === Number(id) ? selected : { id: Number(id), type: mediaType, title: `${mediaType === 'tv' ? 'Series' : 'Movie'} ${id}` };
-  addRecent(item);
-  // Direct same-window navigation avoids third-party iframe refusal.
-  window.location.assign(route);
-}
-
-async function playEnhanced() {
-  const input = $('#directUrl').value.trim();
-  const url = validHttpsUrl(input);
-  if (!url) {
-    showToast('Enter a direct HTTPS video address.');
-    return;
-  }
-  if (!/\.(mp4|webm|m4v)(?:$|\?)/i.test(url.href)) {
-    showToast('Use a direct MP4, WebM, or M4V link—not a webpage.');
-    return;
-  }
-  const video = $('#video');
-  video.src = url.href;
-  video.className = '';
-  $('#emptyState').hidden = true;
-  $('#nativePlayer').hidden = false;
-  try { await video.play(); }
-  catch { showToast('Tap Play in the video controls to begin.'); }
-}
-
-function closeNativePlayer() {
-  const video = $('#video');
-  video.pause();
-  video.removeAttribute('src');
-  video.load();
-  $('#nativePlayer').hidden = true;
-  $('#emptyState').hidden = false;
-}
-
-async function requestFullscreen() {
-  const target = $('#nativePlayer');
-  try {
-    if ($('#video').webkitEnterFullscreen) $('#video').webkitEnterFullscreen();
-    else if (target.requestFullscreen) await target.requestFullscreen();
-    else showToast('Use the full-screen icon in the video controls.');
-  } catch { showToast('Use the full-screen icon in the video controls.'); }
-}
-
-$$('.segment').forEach((button) => button.addEventListener('click', () => setType(button.dataset.type)));
-$('#titleSearch').addEventListener('input', (event) => renderResults(event.target.value));
-$('#idInput').addEventListener('input', () => { selected = null; $('#selectionPill').textContent = $('#idInput').value ? `TMDB ${$('#idInput').value}` : 'Nothing selected'; });
-$('#idInput').addEventListener('keydown', (event) => { if (event.key === 'Enter') playOriginal(); });
-$('#playOriginal').addEventListener('click', playOriginal);
-$('#playEnhanced').addEventListener('click', playEnhanced);
-$('#closePlayer').addEventListener('click', closeNativePlayer);
-$('#fullscreenBtn').addEventListener('click', requestFullscreen);
-$('#clearRecent').addEventListener('click', () => { saveState({ recent: [] }); renderRecent(); });
-
-$('.modes').addEventListener('click', (event) => {
-  const button = event.target.closest('[data-filter]');
-  if (!button) return;
-  $$('.mode').forEach((item) => item.classList.toggle('active', item === button));
-  const video = $('#video');
-  video.classList.remove('video-clear', 'video-cinema');
-  if (button.dataset.filter === 'clear') video.classList.add('video-clear');
-  if (button.dataset.filter === 'cinema') video.classList.add('video-cinema');
-});
-
-$('#settingsBtn').addEventListener('click', () => {
-  $('#baseUrl').value = readState().baseUrl;
-  $('#settingsDialog').showModal();
-});
-$('#saveSettings').addEventListener('click', (event) => {
-  const url = validHttpsUrl($('#baseUrl').value.trim());
-  if (!url) {
-    event.preventDefault();
-    showToast('Enter a valid HTTPS player address.');
-    return;
-  }
-  saveState({ baseUrl: url.href.replace(/\/$/, '') });
-  showToast('Settings saved');
-});
-
-$('#video').addEventListener('error', () => showToast('This direct video could not be decoded by Safari.'));
-
-(function init() {
-  setType(mediaType);
-  renderRecent();
-  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
-})();
+(async function init(){setType(mediaType);renderRecent();if('serviceWorker'in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});await loadCatalogues()})();

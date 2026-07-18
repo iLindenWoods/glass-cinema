@@ -1,14 +1,11 @@
-# Glass Cinema — Playback Restored v7.5
+# Glass Cinema v8.0
 
-This build restores the proven v7.3 embedded playback path while removing the unwanted previous/next episode controls.
+A redesigned Apple-style iPad web app that preserves the proven embedded playback architecture from v7.5.
 
-## Changes
-- Restored the working contained-player implementation.
-- Removed previous/next episode buttons.
-- Kept the auto-hiding picture toolbar.
-- Kept the v7.0 colours.
-- Kept colour-neutral Enhanced Screen.
-- Full Screen again uses the reliable Glass Cinema player container; the provider’s own full-screen and Picture-in-Picture controls remain available inside the video.
-- Updated cache to v7.5.
-
-Upload every file and folder to the repository, including `.github`.
+## Highlights
+- New sidebar-based Apple TV-inspired interface.
+- Search, identifiers, series season/episode inputs, picture modes and recent titles.
+- Persistent subtle `•••` control-reveal button over the player, so the Glass Cinema bar can always be restored on iPad even when the embedded iframe captures taps.
+- Auto-hiding Glass Cinema toolbar.
+- Colour-neutral Enhanced mode.
+- Same-origin catalogue mirror workflow retained.

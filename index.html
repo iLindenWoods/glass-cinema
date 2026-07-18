@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
-  <meta name="theme-color" content="#776f69">
+  <meta name="theme-color" content="#17141a">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Glass Cinema">
@@ -13,90 +13,112 @@
   <title>Glass Cinema</title>
 </head>
 <body>
-  <div class="wallpaper" aria-hidden="true"><i class="sun"></i><i class="mountains back"></i><i class="mountains front"></i><i class="lake"></i></div>
+  <div class="ambient" aria-hidden="true"></div>
+  <main class="shell">
+    <aside class="sidebar glass-panel">
+      <div class="brand">
+        <div class="monogram">VE</div>
+        <div><h1>Glass Cinema</h1><p>Valora × Elara</p></div>
+      </div>
 
-  <main class="app glass">
-    <header class="header">
-      <div class="brand"><div class="monogram">VE</div><div><h1>Glass Cinema</h1><p>Valora × Elara</p></div></div>
-      <div class="status" id="catalogueStatus"><i></i><span>Loading catalogue…</span></div>
-      <button class="round" id="settingsBtn" aria-label="Settings">•••</button>
-    </header>
+      <div class="global-search search-wrap">
+        <span>⌕</span><input id="titleSearch" placeholder="Search movies or series…" autocomplete="off">
+      </div>
 
-    <section class="workspace">
-      <aside class="controls glass-inner">
+      <nav class="nav" aria-label="Library">
+        <button class="nav-item active" type="button"><span>⌂</span>Home</button>
+        <button class="nav-item" type="button" data-nav-type="movie"><span>▤</span>Movies</button>
+        <button class="nav-item" type="button" data-nav-type="tv"><span>▣</span>Series</button>
+        <button class="nav-item" type="button"><span>＋</span>My List</button>
+        <button class="nav-item" type="button"><span>◷</span>Recently Played</button>
+      </nav>
+
+      <section class="quick-play">
         <div class="segmented" role="tablist" aria-label="Content type">
           <button class="segment active" data-type="movie">Movie</button>
           <button class="segment" data-type="tv">Series</button>
         </div>
-
         <label class="label" for="idInput">TMDB or IMDb number</label>
         <div class="input-row">
-          <input id="idInput" placeholder="e.g. 603 or tt0133093" autocomplete="off" autocapitalize="off" spellcheck="false">
-          <button class="play" id="playButton"><span class="triangle">▶</span><span>Play</span></button>
+          <input id="idInput" placeholder="e.g. 603" autocomplete="off" autocapitalize="off" spellcheck="false">
+          <button class="play" id="playButton"><span>▶</span></button>
         </div>
-
         <div class="episode-row" id="episodeRow" hidden>
           <label>Season<input id="season" type="number" min="1" value="1" inputmode="numeric"></label>
           <label>Episode<input id="episode" type="number" min="1" value="1" inputmode="numeric"></label>
         </div>
+      </section>
 
-        <div class="divider"><span>or search the full database</span></div>
+      <div class="results" id="results" aria-live="polite"></div>
+      <div class="selection-card" id="selectionCard" hidden>
+        <div><small>SELECTED</small><strong id="selectedTitle"></strong><span id="selectedMeta"></span></div>
+        <button id="clearSelection" aria-label="Clear selection">×</button>
+      </div>
 
-        <label class="label" for="titleSearch">Title</label>
-        <div class="search-wrap"><span>⌕</span><input id="titleSearch" placeholder="Start typing a title…" autocomplete="off"></div>
-        <div class="results" id="results" aria-live="polite"></div>
+      <div class="sidebar-bottom">
+        <div class="status" id="catalogueStatus"><i></i><span>Loading catalogue…</span></div>
+        <button class="settings-row" id="settingsBtn"><span>⚙</span><span>Settings</span><b>›</b></button>
+      </div>
+    </aside>
 
-        <div class="selection-card" id="selectionCard" hidden>
-          <div><small>SELECTED</small><strong id="selectedTitle"></strong><span id="selectedMeta"></span></div>
-          <button id="clearSelection" aria-label="Clear selection">×</button>
-        </div>
-
-        <div class="safety"><span class="safe-dot"></span><div><strong>Contained playback</strong><p>No paid APIs or keys. The provider remains isolated inside its own frame.</p></div></div>
-      </aside>
-
-      <section class="stage glass-inner" id="stage">
+    <section class="content">
+      <section class="stage glass-panel" id="stage">
         <div class="empty-state" id="emptyState">
           <div class="hero-mark">VE</div>
           <h2>Your private screening room</h2>
-          <p>Enter a number or search for a title.</p>
+          <p>Search for a title or enter its identifier.</p>
         </div>
 
         <div class="embed-player" id="embedPlayer" hidden>
           <iframe id="playerFrame" title="Video player" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
           <div class="enhancement-screen" id="enhancementScreen" aria-hidden="true"></div>
-          <div class="player-toolbar glass-dark" id="playerToolbar" aria-label="Player controls">
-            <button id="closePlayer">Done</button>
+          <div class="player-title" id="playerTitleDisplay"><small>NOW PLAYING</small><strong>Glass Cinema</strong></div>
+          <button class="reveal-controls" id="revealControls" aria-label="Show Glass Cinema controls">•••</button>
+          <div class="player-toolbar glass-dark visible" id="playerToolbar" aria-label="Player controls">
+            <button id="closePlayer" class="toolbar-text">Done</button>
             <div class="modes" role="group" aria-label="Picture mode">
               <button class="mode active" data-filter="original">Original</button>
-              <button class="mode" data-filter="enhanced">Enhanced Screen</button>
+              <button class="mode" data-filter="enhanced">Enhanced</button>
               <button class="mode" data-filter="clear">Glass Clear</button>
               <button class="mode" data-filter="cinema">Cinema</button>
             </div>
-            <button id="fullscreenBtn">Full Screen</button>
-            <button id="openDirect">Open Directly</button>
+            <button id="fullscreenBtn" class="toolbar-text">Full Screen</button>
+            <button id="openDirect" class="toolbar-text">Open Directly</button>
           </div>
         </div>
       </section>
-    </section>
 
-    <section class="recent glass-inner">
-      <div class="recent-head"><span>↶</span><strong>Recent</strong><button id="clearRecent" class="text-button">Clear</button></div>
-      <div class="recent-list" id="recentList"><p>No recent titles yet.</p></div>
-    </section>
+      <section class="picture-strip glass-panel">
+        <div class="strip-heading">
+          <div><small>PICTURE</small><h3>Viewing mode</h3></div>
+          <p>Enhanced improves luminance and detail while preserving the original colours.</p>
+        </div>
+        <div class="mode-cards">
+          <button data-mode-card="original" class="mode-card active"><span>◯</span><strong>Original</strong><small>Untouched image</small></button>
+          <button data-mode-card="enhanced" class="mode-card"><span>✣</span><strong>Enhanced</strong><small>Neutral clarity</small></button>
+          <button data-mode-card="clear" class="mode-card"><span>◇</span><strong>Glass Clear</strong><small>Bright and crisp</small></button>
+          <button data-mode-card="cinema" class="mode-card"><span>◐</span><strong>Cinema</strong><small>Soft theatre tone</small></button>
+        </div>
+      </section>
 
-    <footer><span>v7.5</span><span class="ready"><i></i> Ready</span></footer>
+      <section class="recent glass-panel">
+        <div class="recent-head"><div><small>LIBRARY</small><h3>Continue Watching</h3></div><button id="clearRecent" class="text-button">Clear</button></div>
+        <div class="recent-list" id="recentList"><p>No recent titles yet.</p></div>
+      </section>
+
+      <footer><span>Glass Cinema v8.0</span><span class="ready"><i></i> Ready</span></footer>
+    </section>
   </main>
 
-  <dialog id="settingsDialog" class="settings glass">
+  <dialog id="settingsDialog" class="settings glass-panel">
     <form method="dialog">
       <div class="dialog-head"><div><small>PLAYBACK</small><h2>Settings</h2></div><button value="cancel" class="round">×</button></div>
       <label class="field">Provider address<input id="baseUrl" type="url" value="https://vidrock.ru" autocapitalize="off" spellcheck="false"></label>
       <label class="switch-row"><span><strong>Prefer TMDB identifiers</strong><small>IMDb identifiers are also accepted when entered manually.</small></span><input id="preferTmdb" type="checkbox" checked></label>
-      <p class="note">Playback uses the provider’s documented embed routes. Search first uses catalogue files mirrored into this GitHub repository by the included free GitHub Action, avoiding browser CORS restrictions.</p>
+      <p class="note">Search uses the local catalogue mirror. Playback remains contained inside the provider frame.</p>
       <div class="dialog-actions"><button value="cancel" class="secondary">Cancel</button><button value="default" class="primary" id="saveSettings">Save</button></div>
     </form>
   </dialog>
-
   <div class="toast" id="toast" role="status" hidden></div>
   <script src="player.js"></script>
 </body>

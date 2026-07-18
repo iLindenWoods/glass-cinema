@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
-  <meta name="theme-color" content="#080810">
+  <meta name="theme-color" content="#11141a">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Glass Cinema">
@@ -13,99 +13,93 @@
   <title>Glass Cinema</title>
 </head>
 <body>
-  <div class="aurora aurora-one"></div>
-  <div class="aurora aurora-two"></div>
-  <div class="grain"></div>
+  <div class="wallpaper" aria-hidden="true"><div class="sun"></div><div class="mountains back"></div><div class="mountains front"></div><div class="lake"></div></div>
 
-  <main class="app-shell">
-    <header class="topbar glass">
-      <button class="identity" id="homeBtn" aria-label="Glass Cinema home">
-        <span class="sigil"><span></span></span>
-        <span class="identity-copy"><strong>Glass Cinema</strong><small>Valora × Elara edition</small></span>
-      </button>
-      <div class="top-actions">
-        <button class="icon-button" id="installBtn" title="Install on iPad" aria-label="Install on iPad">＋</button>
-        <button class="icon-button" id="settingsBtn" title="Settings" aria-label="Settings">•••</button>
+  <main class="app glass">
+    <header class="header">
+      <div class="brand">
+        <div class="monogram">VE</div>
+        <div><h1>Glass Cinema</h1><p>Valora × Elara Edition</p></div>
       </div>
+      <button class="round" id="settingsBtn" aria-label="Settings">⌘</button>
     </header>
 
-    <section class="hero glass" id="hero">
-      <div class="hero-glow"></div>
-      <div class="hero-copy">
-        <span class="eyebrow" id="eyebrow">YOUR PRIVATE SCREENING ROOM</span>
-        <h1 id="heroTitle">A quieter way<br>to enter a story.</h1>
-        <p id="heroText">Search by title or TMDB number. Glass Cinema opens the selected stream in the same iPad window, avoiding the blocked double-frame player.</p>
-        <div class="hero-actions">
-          <button class="primary" id="focusSearch">Explore</button>
-          <button class="secondary" id="resumeBtn" hidden>Resume last title</button>
+    <section class="workspace">
+      <aside class="controls glass-inner">
+        <div class="segmented" role="tablist">
+          <button class="segment active" data-type="movie">Movie</button>
+          <button class="segment" data-type="tv">Series</button>
         </div>
-      </div>
-      <div class="prism" aria-hidden="true"><div class="prism-core"></div><div class="orbit orbit-a"></div><div class="orbit orbit-b"></div></div>
-    </section>
 
-    <section class="command glass" aria-label="Find and play">
-      <div class="type-switch" role="tablist">
-        <button class="type active" data-type="movie" role="tab">Film</button>
-        <button class="type" data-type="tv" role="tab">Series</button>
-      </div>
-      <div class="search-box">
-        <span class="search-icon">⌕</span>
-        <input id="search" inputmode="search" autocomplete="off" placeholder="Title or TMDB number">
-        <button id="clearSearch" class="clear" aria-label="Clear search" hidden>×</button>
-      </div>
-      <div class="episode-fields" id="episodeFields" hidden>
-        <label><span>Season</span><input id="season" type="number" min="1" value="1"></label>
-        <label><span>Episode</span><input id="episode" type="number" min="1" value="1"></label>
-      </div>
-      <button class="play-button" id="playBtn"><span>Play</span><b>▶</b></button>
-    </section>
-
-    <section class="content-grid">
-      <article class="selection glass">
-        <div class="section-heading"><div><span class="eyebrow">NOW SELECTED</span><h2 id="selectionTitle">Nothing selected</h2></div><span class="status-dot" id="statusDot"></span></div>
-        <p id="selectionMeta">Enter a numeric TMDB identifier, or choose one of the curated titles below.</p>
-        <div class="selected-actions">
-          <button class="secondary" id="copyIdBtn" disabled>Copy ID</button>
-          <button class="secondary" id="directOpenBtn" disabled>Open source</button>
+        <label class="label" for="idInput">Enter TMDB number</label>
+        <div class="input-row">
+          <input id="idInput" inputmode="numeric" pattern="[0-9]*" placeholder="e.g. 603" autocomplete="off">
+          <button class="play" id="playOriginal">▶ <span>Play</span></button>
         </div>
-      </article>
 
-      <article class="mood glass">
-        <span class="eyebrow">GLASS MOOD</span>
-        <div class="mood-row">
-          <button class="mood-chip active" data-mood="luminous">Luminous</button>
-          <button class="mood-chip" data-mood="cinema">Cinema</button>
-          <button class="mood-chip" data-mood="nocturne">Nocturne</button>
+        <div class="episode-row" id="episodeRow" hidden>
+          <label>Season<input id="season" type="number" min="1" value="1"></label>
+          <label>Episode<input id="episode" type="number" min="1" value="1"></label>
         </div>
-        <p>These moods shape the Glass Cinema interface. External protected players control their own picture processing.</p>
-      </article>
+
+        <div class="divider"><span>or</span></div>
+
+        <label class="label" for="titleSearch">Search local catalogue</label>
+        <div class="search-wrap"><span>⌕</span><input id="titleSearch" placeholder="Search by title…" autocomplete="off"></div>
+        <div class="results" id="results" aria-live="polite"></div>
+
+        <details class="advanced">
+          <summary>Enhanced direct video</summary>
+          <p>Use this only with a direct HTTPS MP4/WebM address you are authorised to view.</p>
+          <input id="directUrl" type="url" placeholder="https://…/video.mp4" autocapitalize="off" spellcheck="false">
+          <button class="secondary wide" id="playEnhanced">Play enhanced</button>
+        </details>
+
+        <div class="safety"><span class="safe-dot"></span><div><strong>Safe playback</strong><p>No remote scripts, paid APIs, trackers, or embedded third-party frames.</p></div></div>
+      </aside>
+
+      <section class="stage glass-inner" id="stage">
+        <div class="empty-state" id="emptyState">
+          <div class="hero-mark">VE</div>
+          <h2>Your private screening room</h2>
+          <p>Enter a number or search for a title to begin.</p>
+          <div class="selection-pill" id="selectionPill">Nothing selected</div>
+        </div>
+
+        <div class="native-player" id="nativePlayer" hidden>
+          <video id="video" playsinline controls preload="metadata"></video>
+          <div class="player-toolbar glass-dark">
+            <button id="closePlayer">Done</button>
+            <div class="modes" role="group" aria-label="Picture mode">
+              <button class="mode active" data-filter="original">Original</button>
+              <button class="mode" data-filter="clear">Glass Clear</button>
+              <button class="mode" data-filter="cinema">Cinema</button>
+            </div>
+            <button id="fullscreenBtn">Full Screen</button>
+          </div>
+        </div>
+      </section>
     </section>
 
-    <section class="curated glass">
-      <div class="section-heading"><div><span class="eyebrow">CURATED FOR YOU</span><h2>Stories worth entering</h2></div><span class="catalogue-status" id="catalogueStatus">Local collection</span></div>
-      <div class="cards" id="cards"></div>
+    <section class="recent glass-inner">
+      <div><span class="clock">↶</span><strong>Recent</strong></div>
+      <button id="clearRecent" class="text-button">Clear</button>
+      <div class="recent-list" id="recentList"><p>No recent titles yet.</p></div>
     </section>
 
-    <footer>Glass Cinema does not host media. Only access material you are authorised to view.</footer>
+    <footer><span>v5.0</span><span class="ready"><i></i> Ready</span></footer>
   </main>
 
-  <div class="sheet" id="settings" hidden>
-    <div class="sheet-card glass">
-      <div class="sheet-head"><div><span class="eyebrow">PREFERENCES</span><h2>Glass Cinema</h2></div><button class="icon-button" id="closeSettings">×</button></div>
-      <form id="settingsForm">
-        <label class="field"><span>Player base address</span><input id="embedBase" value="https://vidrock.ru" autocapitalize="off" spellcheck="false"></label>
-        <label class="field"><span>Playback behaviour</span><select id="playbackMode"><option value="same">Same window — recommended on iPad</option><option value="new">New Safari tab</option><option value="embed">Embedded frame — may be blocked</option></select></label>
-        <p class="settings-note">Same-window mode avoids the cross-origin frame restriction that caused “Content unavailable”. Use Safari’s Back button to return to Glass Cinema.</p>
-        <div class="sheet-actions"><button type="button" class="secondary" id="cancelSettings">Cancel</button><button type="submit" class="primary">Save</button></div>
-      </form>
-    </div>
-  </div>
+  <dialog id="settingsDialog" class="settings glass">
+    <form method="dialog" id="settingsForm">
+      <div class="dialog-head"><div><small>PLAYBACK</small><h2>Settings</h2></div><button value="cancel" class="round">×</button></div>
+      <label class="field">Player base address<input id="baseUrl" type="url" value="https://vidrock.ru" autocapitalize="off" spellcheck="false"></label>
+      <p class="note">Original playback opens the provider directly in this Safari window. This avoids iframe refusal and returns with Safari’s Back button.</p>
+      <div class="dialog-actions"><button value="cancel" class="secondary">Cancel</button><button value="default" class="primary" id="saveSettings">Save</button></div>
+    </form>
+  </dialog>
 
-  <div class="embed-layer" id="embedLayer" hidden>
-    <div class="embed-bar glass"><button id="closeEmbed">‹ Back</button><strong id="embedTitle">Playing</strong><button id="externalEmbed">Open directly</button></div>
-    <iframe id="embed" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" allowfullscreen referrerpolicy="no-referrer"></iframe>
-  </div>
-
+  <div class="toast" id="toast" role="status" hidden></div>
   <script src="player.js"></script>
 </body>
 </html>

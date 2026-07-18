@@ -1,48 +1,219 @@
-const $ = (s) => document.querySelector(s);
-let mediaType = 'movie';
-let selected = null;
+const $ = (selector) => document.querySelector(selector);
+const $$ = (selector) => [...document.querySelectorAll(selector)];
 
-const curated = [
-  {id:157336,type:'movie',title:'Interstellar',meta:'Film · 2014',bg:'radial-gradient(circle at 68% 24%,#b2d8ff 0 4%,transparent 18%),linear-gradient(145deg,#16284b,#060813 65%)'},
-  {id:329865,type:'movie',title:'Arrival',meta:'Film · 2016',bg:'radial-gradient(ellipse at 55% 35%,#7b8796 0 8%,transparent 26%),linear-gradient(160deg,#616b75,#11141a 62%)'},
-  {id:70523,type:'tv',title:'Dark',meta:'Series · 2017',bg:'radial-gradient(circle at 50% 25%,#7c7682 0 2%,transparent 21%),linear-gradient(145deg,#313039,#090a0e 70%)'},
-  {id:63639,type:'tv',title:'The Expanse',meta:'Series · 2015',bg:'radial-gradient(circle at 72% 22%,#d19a61 0 3%,transparent 17%),linear-gradient(145deg,#3d2b2b,#090b13 65%)'},
-  {id:23004,type:'tv',title:'Captain Future',meta:'Series · 1978',bg:'radial-gradient(circle at 70% 20%,#ffbd6b 0 4%,transparent 17%),linear-gradient(145deg,#274d77,#120d29 70%)'},
-  {id:95396,type:'tv',title:'Severance',meta:'Series · 2022',bg:'linear-gradient(145deg,#b9d0d6,#3b5664 45%,#111820)'},
-  {id:686,type:'movie',title:'Contact',meta:'Film · 1997',bg:'radial-gradient(circle at 62% 25%,#d7e6ff 0 3%,transparent 18%),linear-gradient(145deg,#273e65,#070a14 72%)'},
-  {id:62,type:'movie',title:'2001: A Space Odyssey',meta:'Film · 1968',bg:'radial-gradient(circle at 64% 26%,#ffdfcc 0 3%,transparent 13%),linear-gradient(145deg,#7b2d29,#09090d 68%)'},
-  {id:93740,type:'tv',title:'Foundation',meta:'Series · 2021',bg:'radial-gradient(circle at 70% 20%,#ffbd75 0 3%,transparent 16%),linear-gradient(145deg,#6c3b32,#0b0c16 72%)'},
-  {id:1418,type:'tv',title:'The Big Bang Theory',meta:'Series · 2007',bg:'radial-gradient(circle at 50% 30%,#fff6af 0 2%,transparent 15%),linear-gradient(145deg,#a34e34,#1e1621 70%)'}
+const catalogue = [
+  { id: 603, type: 'movie', title: 'The Matrix', year: 1999 },
+  { id: 157336, type: 'movie', title: 'Interstellar', year: 2014 },
+  { id: 329865, type: 'movie', title: 'Arrival', year: 2016 },
+  { id: 62, type: 'movie', title: '2001: A Space Odyssey', year: 1968 },
+  { id: 686, type: 'movie', title: 'Contact', year: 1997 },
+  { id: 27205, type: 'movie', title: 'Inception', year: 2010 },
+  { id: 1418, type: 'tv', title: 'The Big Bang Theory', year: 2007 },
+  { id: 23004, type: 'tv', title: 'Captain Future', year: 1978 },
+  { id: 70523, type: 'tv', title: 'Dark', year: 2017 },
+  { id: 63639, type: 'tv', title: 'The Expanse', year: 2015 },
+  { id: 95396, type: 'tv', title: 'Severance', year: 2022 },
+  { id: 93740, type: 'tv', title: 'Foundation', year: 2021 }
 ];
 
-const defaults = {embedBase:'https://vidrock.ru',playbackMode:'same',mood:'luminous',last:null};
-const storage = {
-  get(){try{return {...defaults,...JSON.parse(localStorage.getItem('glassCinemaV4') || '{}')}}catch{return {...defaults}}},
-  set(part){localStorage.setItem('glassCinemaV4',JSON.stringify({...this.get(),...part}))}
+const defaults = { baseUrl: 'https://vidrock.ru', type: 'movie', recent: [] };
+const readState = () => {
+  try { return { ...defaults, ...JSON.parse(localStorage.getItem('glassCinemaV5') || '{}') }; }
+  catch { return { ...defaults }; }
 };
-function safeBase(value){try{const u=new URL(value);if(u.protocol!=='https:') throw new Error();return u.href.replace(/\/$/,'')}catch{return ''}}
-function routeFor(item){const s=storage.get();const base=safeBase(s.embedBase);if(!base||!item)return '';const season=Math.max(1,Number($('#season').value)||1);const episode=Math.max(1,Number($('#episode').value)||1);return item.type==='movie'?`${base}/movie/${encodeURIComponent(item.id)}`:`${base}/tv/${encodeURIComponent(item.id)}/${season}/${episode}`}
-function selectItem(item){selected={...item};mediaType=item.type;document.querySelectorAll('.type').forEach(b=>b.classList.toggle('active',b.dataset.type===mediaType));$('#episodeFields').hidden=mediaType!=='tv';$('#search').value=String(item.id);$('#clearSearch').hidden=false;$('#selectionTitle').textContent=item.title;$('#selectionMeta').textContent=`${item.meta||item.type} · TMDB ${item.id}${item.type==='tv'?' · choose season and episode':''}`;$('#statusDot').classList.add('ready');$('#copyIdBtn').disabled=false;$('#directOpenBtn').disabled=false;$('#heroTitle').innerHTML=item.title.replace(/: /g,':<br>');$('#eyebrow').textContent=item.type==='tv'?'SERIES SELECTED':'FILM SELECTED';$('#heroText').textContent=`Ready to open ${item.title} using the iPad-compatible playback route.`;storage.set({last:item});$('#resumeBtn').hidden=true}
-function selectFromInput(){const q=$('#search').value.trim();if(!/^\d+$/.test(q)){const hit=curated.find(x=>x.title.toLowerCase()===q.toLowerCase());if(hit)return selectItem(hit);$('#selectionTitle').textContent='Enter a TMDB number';$('#selectionMeta').textContent='Title search is available for the curated collection. Other titles need their numeric TMDB identifier.';return null}const hit=curated.find(x=>String(x.id)===q);const fallback={id:q,type:mediaType,title:`TMDB ${q}`,meta:mediaType==='tv'?'Series':'Film'};selectItem(hit||fallback);return selected}
-function play(){const item=selected||selectFromInput();if(!item)return;const url=routeFor(item);if(!url)return alert('Set a valid HTTPS player address in Settings.');const mode=storage.get().playbackMode;if(mode==='new'){window.open(url,'_blank','noopener,noreferrer')}else if(mode==='embed'){$('#embedTitle').textContent=item.title;$('#embed').src=url;$('#embedLayer').hidden=false}else{location.href=url}}
-function renderCards(){const root=$('#cards');root.replaceChildren();for(const item of curated){const button=document.createElement('button');button.className='card';button.style.setProperty('--card-bg',item.bg);button.innerHTML=`<small>${item.meta}</small><strong>${item.title}</strong>`;button.addEventListener('click',()=>{selectItem(item);window.scrollTo({top:document.querySelector('.command').offsetTop-12,behavior:'smooth'})});root.append(button)}}
-function setMood(mood){document.body.classList.remove('mood-cinema','mood-nocturne');if(mood!=='luminous')document.body.classList.add(`mood-${mood}`);document.querySelectorAll('.mood-chip').forEach(b=>b.classList.toggle('active',b.dataset.mood===mood));storage.set({mood})}
+const saveState = (patch) => localStorage.setItem('glassCinemaV5', JSON.stringify({ ...readState(), ...patch }));
 
-document.querySelector('.type-switch').addEventListener('click',e=>{const t=e.target.closest('[data-type]');if(!t)return;mediaType=t.dataset.type;selected=null;document.querySelectorAll('.type').forEach(b=>b.classList.toggle('active',b===t));$('#episodeFields').hidden=mediaType!=='tv';$('#selectionTitle').textContent='Nothing selected';$('#selectionMeta').textContent='Enter a numeric TMDB identifier, or choose one of the curated titles below.';$('#statusDot').classList.remove('ready')});
-$('#search').addEventListener('input',()=>{$('#clearSearch').hidden=!$('#search').value;selected=null});
-$('#search').addEventListener('keydown',e=>{if(e.key==='Enter')play()});
-$('#clearSearch').onclick=()=>{$('#search').value='';$('#clearSearch').hidden=true;selected=null;$('#search').focus()};
-$('#playBtn').onclick=play;$('#focusSearch').onclick=()=>{document.querySelector('.command').scrollIntoView({behavior:'smooth',block:'center'});setTimeout(()=>$('#search').focus(),350)};
-$('#homeBtn').onclick=()=>window.scrollTo({top:0,behavior:'smooth'});
-$('#copyIdBtn').onclick=async()=>{if(!selected)return;try{await navigator.clipboard.writeText(String(selected.id));$('#copyIdBtn').textContent='Copied';setTimeout(()=>$('#copyIdBtn').textContent='Copy ID',1200)}catch{}};
-$('#directOpenBtn').onclick=()=>{const item=selected||selectFromInput();const url=routeFor(item);if(url)location.href=url};
-document.querySelector('.mood-row').addEventListener('click',e=>{const b=e.target.closest('[data-mood]');if(b)setMood(b.dataset.mood)});
-function openSettings(){const s=storage.get();$('#embedBase').value=s.embedBase;$('#playbackMode').value=s.playbackMode;$('#settings').hidden=false}
-$('#settingsBtn').onclick=openSettings;$('#closeSettings').onclick=$('#cancelSettings').onclick=()=>$('#settings').hidden=true;
-$('#settingsForm').onsubmit=e=>{e.preventDefault();const embedBase=safeBase($('#embedBase').value);if(!embedBase)return alert('Enter a valid HTTPS address.');storage.set({embedBase,playbackMode:$('#playbackMode').value});$('#settings').hidden=true};
-$('#closeEmbed').onclick=()=>{$('#embedLayer').hidden=true;$('#embed').src='about:blank'};
-$('#externalEmbed').onclick=()=>{const url=routeFor(selected);if(url)location.href=url};
-$('#installBtn').onclick=()=>alert('In Safari, tap Share, then Add to Home Screen.');
-$('#resumeBtn').onclick=()=>{const last=storage.get().last;if(last){selectItem(last);play()}};
+let mediaType = readState().type;
+let selected = null;
 
-(function init(){renderCards();const s=storage.get();setMood(s.mood);if(window.matchMedia('(display-mode: standalone)').matches)$('#installBtn').hidden=true;if(s.last){$('#resumeBtn').hidden=false;$('#resumeBtn').textContent=`Resume ${s.last.title}`;}if('serviceWorker' in navigator && location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{})})();
+function validHttpsUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' ? url : null;
+  } catch { return null; }
+}
+
+function showToast(message) {
+  const toast = $('#toast');
+  toast.textContent = message;
+  toast.hidden = false;
+  clearTimeout(showToast.timer);
+  showToast.timer = setTimeout(() => { toast.hidden = true; }, 2600);
+}
+
+function routeFor(id) {
+  const state = readState();
+  const base = validHttpsUrl(state.baseUrl);
+  if (!base || !/^\d+$/.test(String(id))) return null;
+  const clean = base.href.replace(/\/$/, '');
+  if (mediaType === 'movie') return `${clean}/movie/${encodeURIComponent(id)}`;
+  const season = Math.max(1, Number($('#season').value) || 1);
+  const episode = Math.max(1, Number($('#episode').value) || 1);
+  return `${clean}/tv/${encodeURIComponent(id)}/${season}/${episode}`;
+}
+
+function setType(type) {
+  mediaType = type;
+  saveState({ type });
+  $$('.segment').forEach((button) => button.classList.toggle('active', button.dataset.type === type));
+  $('#episodeRow').hidden = type !== 'tv';
+  selected = null;
+  $('#selectionPill').textContent = type === 'movie' ? 'Movie mode' : 'Series mode';
+  renderResults($('#titleSearch').value);
+}
+
+function choose(item) {
+  selected = item;
+  if (item.type !== mediaType) setType(item.type);
+  selected = item;
+  $('#idInput').value = String(item.id);
+  $('#selectionPill').textContent = `${item.title} · ${item.id}`;
+  showToast(`${item.title} selected`);
+}
+
+function renderResults(query = '') {
+  const root = $('#results');
+  root.replaceChildren();
+  const q = query.trim().toLowerCase();
+  if (!q) return;
+  const matches = catalogue.filter((item) => item.type === mediaType && (item.title.toLowerCase().includes(q) || String(item.id).includes(q))).slice(0, 7);
+  if (!matches.length) {
+    const note = document.createElement('div');
+    note.className = 'result';
+    note.textContent = 'Not in the local list — enter its TMDB number above.';
+    root.append(note);
+    return;
+  }
+  for (const item of matches) {
+    const button = document.createElement('button');
+    button.className = 'result';
+    button.innerHTML = `<span>${item.title}</span><small>${item.year} · ${item.id}</small>`;
+    button.addEventListener('click', () => choose(item));
+    root.append(button);
+  }
+}
+
+function addRecent(item) {
+  const state = readState();
+  const recent = [{ ...item, playedAt: Date.now() }, ...state.recent.filter((entry) => !(entry.id === item.id && entry.type === item.type))].slice(0, 8);
+  saveState({ recent });
+  renderRecent();
+}
+
+function renderRecent() {
+  const root = $('#recentList');
+  root.replaceChildren();
+  const recent = readState().recent || [];
+  if (!recent.length) {
+    const p = document.createElement('p');
+    p.textContent = 'No recent titles yet.';
+    root.append(p);
+    return;
+  }
+  for (const item of recent) {
+    const button = document.createElement('button');
+    button.className = 'recent-chip';
+    button.textContent = item.title || `${item.type === 'tv' ? 'Series' : 'Movie'} ${item.id}`;
+    button.addEventListener('click', () => choose(item));
+    root.append(button);
+  }
+}
+
+function playOriginal() {
+  const id = $('#idInput').value.trim();
+  if (!/^\d+$/.test(id)) {
+    showToast('Enter a numeric TMDB number first.');
+    $('#idInput').focus();
+    return;
+  }
+  const route = routeFor(id);
+  if (!route) {
+    showToast('The player address must be a valid HTTPS address.');
+    return;
+  }
+  const item = selected?.id === Number(id) ? selected : { id: Number(id), type: mediaType, title: `${mediaType === 'tv' ? 'Series' : 'Movie'} ${id}` };
+  addRecent(item);
+  // Direct same-window navigation avoids third-party iframe refusal.
+  window.location.assign(route);
+}
+
+async function playEnhanced() {
+  const input = $('#directUrl').value.trim();
+  const url = validHttpsUrl(input);
+  if (!url) {
+    showToast('Enter a direct HTTPS video address.');
+    return;
+  }
+  if (!/\.(mp4|webm|m4v)(?:$|\?)/i.test(url.href)) {
+    showToast('Use a direct MP4, WebM, or M4V link—not a webpage.');
+    return;
+  }
+  const video = $('#video');
+  video.src = url.href;
+  video.className = '';
+  $('#emptyState').hidden = true;
+  $('#nativePlayer').hidden = false;
+  try { await video.play(); }
+  catch { showToast('Tap Play in the video controls to begin.'); }
+}
+
+function closeNativePlayer() {
+  const video = $('#video');
+  video.pause();
+  video.removeAttribute('src');
+  video.load();
+  $('#nativePlayer').hidden = true;
+  $('#emptyState').hidden = false;
+}
+
+async function requestFullscreen() {
+  const target = $('#nativePlayer');
+  try {
+    if ($('#video').webkitEnterFullscreen) $('#video').webkitEnterFullscreen();
+    else if (target.requestFullscreen) await target.requestFullscreen();
+    else showToast('Use the full-screen icon in the video controls.');
+  } catch { showToast('Use the full-screen icon in the video controls.'); }
+}
+
+$$('.segment').forEach((button) => button.addEventListener('click', () => setType(button.dataset.type)));
+$('#titleSearch').addEventListener('input', (event) => renderResults(event.target.value));
+$('#idInput').addEventListener('input', () => { selected = null; $('#selectionPill').textContent = $('#idInput').value ? `TMDB ${$('#idInput').value}` : 'Nothing selected'; });
+$('#idInput').addEventListener('keydown', (event) => { if (event.key === 'Enter') playOriginal(); });
+$('#playOriginal').addEventListener('click', playOriginal);
+$('#playEnhanced').addEventListener('click', playEnhanced);
+$('#closePlayer').addEventListener('click', closeNativePlayer);
+$('#fullscreenBtn').addEventListener('click', requestFullscreen);
+$('#clearRecent').addEventListener('click', () => { saveState({ recent: [] }); renderRecent(); });
+
+$('.modes').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-filter]');
+  if (!button) return;
+  $$('.mode').forEach((item) => item.classList.toggle('active', item === button));
+  const video = $('#video');
+  video.classList.remove('video-clear', 'video-cinema');
+  if (button.dataset.filter === 'clear') video.classList.add('video-clear');
+  if (button.dataset.filter === 'cinema') video.classList.add('video-cinema');
+});
+
+$('#settingsBtn').addEventListener('click', () => {
+  $('#baseUrl').value = readState().baseUrl;
+  $('#settingsDialog').showModal();
+});
+$('#saveSettings').addEventListener('click', (event) => {
+  const url = validHttpsUrl($('#baseUrl').value.trim());
+  if (!url) {
+    event.preventDefault();
+    showToast('Enter a valid HTTPS player address.');
+    return;
+  }
+  saveState({ baseUrl: url.href.replace(/\/$/, '') });
+  showToast('Settings saved');
+});
+
+$('#video').addEventListener('error', () => showToast('This direct video could not be decoded by Safari.'));
+
+(function init() {
+  setType(mediaType);
+  renderRecent();
+  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+})();

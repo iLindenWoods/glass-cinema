@@ -1,19 +1,16 @@
-# Glass Cinema — Valora × Elara v4.0
+# Glass Cinema — Apple Glass v5.0
 
-GitHub Pages-ready iPad web app. No paid APIs or embedded API keys.
+A GitHub Pages-ready iPad web app with a simple Apple-style interface.
 
-## Why playback defaults to same-window mode
-Vidrock may block playback when placed inside an iframe on another website. Same-window mode navigates directly to the player route, avoiding that frame restriction. Use Safari's Back button to return.
+## Playback modes
 
-## Updating an existing GitHub repository
-Upload and replace these files at the repository root:
-- index.html
-- styles.css
-- player.js
-- manifest.webmanifest
-- sw.js
-- icons/icon180.png
-- icons/icon192.png
-- icons/icon512.png
+- **Original:** opens the configured provider directly in the same Safari window. No iframe is used.
+- **Enhanced direct video:** plays a direct HTTPS MP4, WebM, or M4V file in the native browser player with Original, Glass Clear, and Cinema display filters.
 
-After committing, wait for GitHub Pages to redeploy. If the old design remains, remove the Home Screen icon, open the GitHub Pages URL in Safari, reload it, then add it to the Home Screen again.
+## Important limitation
+
+A web app cannot guarantee that a third-party provider will always have a title, remain online, or accept a particular route. It also cannot apply visual filters after Safari navigates to an external provider. The app therefore never claims to bypass provider restrictions and does not embed external pages.
+
+## Privacy and cost
+
+No paid APIs, keys, analytics, advertising, or remote JavaScript libraries are included. Settings and recents are stored locally on the device.
